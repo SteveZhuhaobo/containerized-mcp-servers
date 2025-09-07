@@ -65,6 +65,7 @@ jobs:
         uses: dorny/paths-filter@v2
         id: changes
         with:
+          base: ${{ github.event.before || 'HEAD~1' }}
           filters: |
             snowflake:
               - 'snowflake-mcp/**'
@@ -172,7 +173,7 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.server }}-image-${{ github.run_id }}
+          name: ${{ matrix.server }}-image-${{ github.run_id }}-${{ github.run_attempt }}
           path: /tmp/${{ matrix.server }}.tar
           retention-days: 1
 
@@ -193,7 +194,7 @@ jobs:
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
-          name: ${{ matrix.server }}-image-${{ github.run_id }}
+          name: ${{ matrix.server }}-image-${{ github.run_id }}-${{ github.run_attempt }}
           path: /tmp
 
       - name: Build test image
@@ -311,7 +312,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: hashFiles('${{ matrix.server }}-sbom.spdx.json') != ''
         with:
-          name: ${{ matrix.server }}-sbom-${{ github.run_id }}
+          name: ${{ matrix.server }}-sbom-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ matrix.server }}-sbom.spdx.json
 
   # Step 6: Create release (only for tags)
@@ -327,7 +328,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: ./sboms
-          pattern: "*-sbom-${{ github.run_id }}"
+          pattern: "*-sbom-${{ github.run_id }}-${{ github.run_attempt }}"
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
