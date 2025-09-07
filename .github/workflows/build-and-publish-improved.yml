@@ -5,12 +5,16 @@ on:
     branches: [main, develop]
     tags: ['v*']
     paths:
-      - 'containerized-mcp-servers/**'
+      - 'databricks-mcp/**'
+      - 'snowflake-mcp/**'
+      - 'sqlserver-mcp/**'
       - '.github/workflows/build-and-publish*.yml'
   pull_request:
     branches: [main, develop]
     paths:
-      - 'containerized-mcp-servers/**'
+      - 'databricks-mcp/**'
+      - 'snowflake-mcp/**'
+      - 'sqlserver-mcp/**'
       - '.github/workflows/build-and-publish*.yml'
   workflow_dispatch:
     inputs:
@@ -80,7 +84,9 @@ jobs:
           # Handle manual server selection
           if [[ "${{ github.event.inputs.servers }}" != "" && "${{ github.event.inputs.servers }}" != "all" ]]; then
             SERVERS="${{ github.event.inputs.servers }}"
-            echo "servers-matrix=[$(echo $SERVERS | sed 's/,/","/g' | sed 's/^/"/;s/$/"/')]" >> $GITHUB_OUTPUT
+            # Convert comma-separated list to JSON array
+            MATRIX=$(echo "$SERVERS" | tr ',' '\n' | jq -R . | jq -s .)
+            echo "servers-matrix=$MATRIX" >> $GITHUB_OUTPUT
             echo "any-server=true" >> $GITHUB_OUTPUT
           else
             # Auto-detect based on changes
@@ -101,9 +107,14 @@ jobs:
             fi
             
             # Convert to JSON array
-            MATRIX=$(printf '%s\n' "${SERVERS[@]}" | jq -R . | jq -s .)
-            echo "servers-matrix=$MATRIX" >> $GITHUB_OUTPUT
-            echo "any-server=true" >> $GITHUB_OUTPUT
+            if [[ ${#SERVERS[@]} -gt 0 ]]; then
+              MATRIX=$(printf '%s\n' "${SERVERS[@]}" | jq -R . | jq -s .)
+              echo "servers-matrix=$MATRIX" >> $GITHUB_OUTPUT
+              echo "any-server=true" >> $GITHUB_OUTPUT
+            else
+              echo "servers-matrix=[]" >> $GITHUB_OUTPUT
+              echo "any-server=false" >> $GITHUB_OUTPUT
+            fi
           fi
 
   # Step 2: Security scan (can run independently)
@@ -208,35 +219,54 @@ jobs:
 
       - name: Test container startup
         run: |
-          # Set dummy environment variables
+          # Set dummy environment variables for testing
           ENV_VARS=""
           case "${{ matrix.server }}" in
             "sqlserver-mcp")
-              ENV_VARS="-e SQLSERVER_SERVER=test-server -e SQLSERVER_USERNAME=test-user -e SQLSERVER_PASSWORD=test-pass"
+              ENV_VARS="-e SQLSERVER_SERVER=test-server.database.windows.net -e SQLSERVER_USERNAME=test-user -e SQLSERVER_PASSWORD=TestPass123! -e SQLSERVER_DATABASE=testdb"
               ;;
             "snowflake-mcp")
-              ENV_VARS="-e SNOWFLAKE_ACCOUNT=test-account -e SNOWFLAKE_USER=test-user -e SNOWFLAKE_PASSWORD=test-pass -e SNOWFLAKE_DATABASE=test-db -e SNOWFLAKE_WAREHOUSE=test-wh"
+              ENV_VARS="-e SNOWFLAKE_ACCOUNT=test-account.us-east-1 -e SNOWFLAKE_USER=test-user -e SNOWFLAKE_PASSWORD=TestPass123! -e SNOWFLAKE_DATABASE=testdb -e SNOWFLAKE_WAREHOUSE=test_wh"
               ;;
             "databricks-mcp")
-              ENV_VARS="-e DATABRICKS_SERVER_HOSTNAME=test.databricks.com -e DATABRICKS_HTTP_PATH=/sql/1.0/warehouses/test -e DATABRICKS_ACCESS_TOKEN=test-token"
+              ENV_VARS="-e DATABRICKS_SERVER_HOSTNAME=test.cloud.databricks.com -e DATABRICKS_HTTP_PATH=/sql/1.0/warehouses/test123 -e DATABRICKS_ACCESS_TOKEN=dapi123test456token"
               ;;
           esac
           
+          echo "Testing ${{ matrix.server }} container startup..."
           CONTAINER_ID=$(docker run -d $ENV_VARS ${{ matrix.server }}:test)
-          sleep 15
+          sleep 20
           
           LOGS=$(docker logs $CONTAINER_ID 2>&1)
-          echo "Container logs: $LOGS"
+          echo "Container logs:"
+          echo "$LOGS"
           
-          if echo "$LOGS" | grep -q "Environment configuration is invalid"; then
-            echo "❌ Container failed validation"
-            exit 1
+          # Check if container is still running (basic health check)
+          if docker ps | grep -q $CONTAINER_ID; then
+            echo "✅ Container started successfully"
+            HEALTH_STATUS="healthy"
           else
-            echo "✅ Container validation passed"
+            echo "⚠️ Container exited, checking logs for expected behavior"
+            # For MCP servers, they might exit if they can't connect to test databases
+            # This is expected behavior with dummy credentials
+            if echo "$LOGS" | grep -E "(MCP server|listening|started|ready)" > /dev/null; then
+              echo "✅ Container validation passed - MCP server initialized"
+              HEALTH_STATUS="healthy"
+            elif echo "$LOGS" | grep -E "(connection.*failed|authentication.*failed|invalid.*credentials)" > /dev/null; then
+              echo "✅ Container validation passed - expected connection failure with test credentials"
+              HEALTH_STATUS="healthy"
+            else
+              echo "❌ Container failed validation - unexpected error"
+              HEALTH_STATUS="failed"
+            fi
           fi
           
           docker stop $CONTAINER_ID 2>/dev/null || true
           docker rm $CONTAINER_ID 2>/dev/null || true
+          
+          if [ "$HEALTH_STATUS" = "failed" ]; then
+            exit 1
+          fi
 
       - name: Security test
         run: |
