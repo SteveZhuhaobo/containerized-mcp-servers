@@ -57,16 +57,13 @@ jobs:
         with:
           filters: |
             snowflake:
-              - 'containerized-mcp-servers/snowflake-mcp/**'
-              - 'Snowflake_MCP.py'
+              - 'snowflake-mcp/**'
             databricks:
-              - 'containerized-mcp-servers/databricks-mcp/**'
-              - 'Databricks_MCP.py'
+              - 'databricks-mcp/**'
             sqlserver:
-              - 'containerized-mcp-servers/sqlserver-mcp/**'
-              - 'SQL_MCP.py'
+              - 'sqlserver-mcp/**'
             scripts:
-              - 'containerized-mcp-servers/scripts/**'
+              - 'scripts/**'
 
   security-scan:
     runs-on: ubuntu-latest
@@ -80,7 +77,7 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'fs'
-          scan-ref: 'containerized-mcp-servers'
+          scan-ref: '.'
           format: 'sarif'
           output: 'trivy-results.sarif'
 
@@ -124,7 +121,7 @@ jobs:
       - name: Build Docker image
         uses: docker/build-push-action@v5
         with:
-          context: ./containerized-mcp-servers/${{ matrix.server }}
+          context: ./${{ matrix.server }}
           platforms: linux/amd64,linux/arm64
           push: false
           tags: ${{ steps.meta.outputs.tags }}
@@ -247,7 +244,7 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: ./containerized-mcp-servers/${{ matrix.server }}
+          context: ./${{ matrix.server }}
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
