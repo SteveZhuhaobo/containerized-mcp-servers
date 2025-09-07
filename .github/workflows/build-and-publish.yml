@@ -156,7 +156,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          outputs: type=docker,dest=/tmp/${{ matrix.server }}.tar
+          outputs: type=oci,dest=/tmp/${{ matrix.server }}.tar
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
@@ -183,13 +183,18 @@ jobs:
           name: ${{ matrix.server }}-image
           path: /tmp
 
-      - name: Load Docker image
-        run: docker load --input /tmp/${{ matrix.server }}.tar
+      - name: Build single-platform image for testing
+        uses: docker/build-push-action@v5
+        with:
+          context: ./${{ matrix.server }}
+          platforms: linux/amd64
+          push: false
+          tags: ${{ matrix.server }}:test
+          cache-from: type=gha
 
       - name: Test container startup
         run: |
-          # Get the image name from the loaded image
-          IMAGE_NAME=$(docker images --format "table {{.Repository}}:{{.Tag}}" | grep ${{ matrix.server }} | head -1)
+          IMAGE_NAME="${{ matrix.server }}:test"
           echo "Testing image: $IMAGE_NAME"
           
           # Test container can start and stop
@@ -211,7 +216,7 @@ jobs:
 
       - name: Test image security
         run: |
-          IMAGE_NAME=$(docker images --format "table {{.Repository}}:{{.Tag}}" | grep ${{ matrix.server }} | head -1)
+          IMAGE_NAME="${{ matrix.server }}:test"
           
           # Check if running as non-root
           USER_INFO=$(docker run --rm $IMAGE_NAME id 2>/dev/null || echo "uid=0")
@@ -224,7 +229,7 @@ jobs:
       - name: Run Trivy container scan
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ matrix.server }}:latest
+          image-ref: ${{ matrix.server }}:test
           format: 'table'
           exit-code: '0'  # Don't fail on vulnerabilities, just report
 
