@@ -306,13 +306,15 @@ jobs:
 
       - name: Generate SBOM
         uses: anchore/sbom-action@v0
+        continue-on-error: true
         with:
-          image: ${{ env.REGISTRY_GHCR }}/${{ github.repository_owner }}/${{ matrix.server }}:latest
+          path: ./${{ matrix.server }}
           format: spdx-json
           output-file: ${{ matrix.server }}-sbom.spdx.json
 
       - name: Upload SBOM
         uses: actions/upload-artifact@v4
+        if: hashFiles('${{ matrix.server }}-sbom.spdx.json') != ''
         with:
           name: ${{ matrix.server }}-sbom
           path: ${{ matrix.server }}-sbom.spdx.json
