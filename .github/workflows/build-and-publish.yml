@@ -204,7 +204,7 @@ jobs:
           elif [[ "${{ matrix.server }}" == "snowflake-mcp" ]]; then
             ENV_VARS="-e SNOWFLAKE_ACCOUNT=test-account -e SNOWFLAKE_USER=test-user -e SNOWFLAKE_PASSWORD=test-pass -e SNOWFLAKE_DATABASE=test-db -e SNOWFLAKE_WAREHOUSE=test-wh"
           elif [[ "${{ matrix.server }}" == "databricks-mcp" ]]; then
-            ENV_VARS="-e DATABRICKS_HOST=https://test.databricks.com -e DATABRICKS_TOKEN=test-token"
+            ENV_VARS="-e DATABRICKS_SERVER_HOSTNAME=test.databricks.com -e DATABRICKS_HTTP_PATH=/sql/1.0/warehouses/test -e DATABRICKS_ACCESS_TOKEN=test-token"
           fi
           
           # Test container can start (will fail on connection but should pass validation)
