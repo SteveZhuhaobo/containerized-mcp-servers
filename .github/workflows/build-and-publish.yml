@@ -159,7 +159,7 @@ jobs:
           outputs: type=docker,dest=/tmp/${{ matrix.server }}.tar
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.server }}-image
           path: /tmp/${{ matrix.server }}.tar
@@ -178,7 +178,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download build artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ${{ matrix.server }}-image
           path: /tmp
@@ -288,7 +288,7 @@ jobs:
           output-file: ${{ matrix.server }}-sbom.spdx.json
 
       - name: Upload SBOM
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.server }}-sbom
           path: ${{ matrix.server }}-sbom.spdx.json
@@ -302,7 +302,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download all SBOMs
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: ./sboms
 
