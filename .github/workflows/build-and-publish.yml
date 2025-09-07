@@ -112,7 +112,6 @@ jobs:
         with:
           images: |
             ${{ env.REGISTRY_GHCR }}/${{ github.repository_owner }}/${{ matrix.server }}
-            ${{ env.REGISTRY_DOCKER }}/${{ github.repository_owner }}/${{ matrix.server }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -230,13 +229,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        if: secrets.DOCKERHUB_TOKEN != ''
-        with:
-          registry: ${{ env.REGISTRY_DOCKER }}
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Extract metadata
         id: meta
@@ -244,7 +236,6 @@ jobs:
         with:
           images: |
             ${{ env.REGISTRY_GHCR }}/${{ github.repository_owner }}/${{ matrix.server }}
-            ${{ env.REGISTRY_DOCKER }}/${{ github.repository_owner }}/${{ matrix.server }}
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
