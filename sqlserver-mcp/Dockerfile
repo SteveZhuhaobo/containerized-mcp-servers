@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y \
 
 # Install Python dependencies
 COPY requirements.txt .
+ENV PATH=/root/.local/bin:$PATH
 RUN pip install --user --no-cache-dir -r requirements.txt
 
 # Production stage

@@ -7,14 +7,14 @@ RUN apt-get update && apt-get install -y \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
-# Create build directory
 WORKDIR /build
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
+ENV PATH=/root/.local/bin:$PATH
+RUN pip install --user --no-cache-dir -r requirements.txt
 COPY requirements-test.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
-RUN pip install --no-cache-dir --user -r requirements-test.txt
+RUN pip install --user --no-cache-dir -r requirements-test.txt
 
 # Runtime stage
 FROM python:3.11-slim
